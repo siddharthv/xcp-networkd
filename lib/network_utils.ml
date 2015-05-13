@@ -33,6 +33,7 @@ let modprobe = "/sbin/modprobe"
 let ethtool = ref "/sbin/ethtool"
 let bonding_dir = "/proc/net/bonding/"
 let dhcp6c = "/sbin/dhcp6c"
+let dcbtool = "/usr/sbin/dcbtool"
 
 let call_script ?(log_successful_output=false) script args =
 	try
@@ -544,6 +545,13 @@ module Dhclient = struct
 				ignore (start ~ipv6 interface options)
 			end
 		end
+end
+
+module Dcbtool = struct
+	let call ?(log=false) args =
+		call_script ~log_successful_output:log dcbtool args
+	let is_fcoe_supported name value =
+		call ~log:true ("sc" :: name :: "dcb" :: [value] )
 end
 
 module Sysctl = struct
