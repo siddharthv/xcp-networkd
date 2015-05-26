@@ -325,6 +325,38 @@ module Interface = struct
 			else false
 		) ()
 
+	let is_fcoe_dev_blacklisted _ dbg ~name =
+		Debug.with_thread_associated dbg (fun () ->
+			let fcoe_blacklist_file = "/etc/fcoe/blacklist" in
+			match Sys.file_exists fcoe_blacklist_file with
+			| false ->
+					debug "Blacklist file doesn't exist!";
+					false
+			| true ->
+					let black_hash = Hashtbl.create 10 in
+					Unixext.readfile_line (fun l ->
+						let line = Re_str.split_delim (Re_str.regexp_string ":") l in
+						try
+							let driv = List.hd line in
+							let vers_csv = List.nth line 1 in
+							let versions = Re_str.split_delim (Re_str.regexp_string ",") vers_csv in
+							List.iter (fun x -> Hashtbl.add black_hash driv x) versions;
+						with exn ->
+							debug "Exn while attempting to parse blacklist file";
+					) fcoe_blacklist_file;
+					let driver =
+						match Sysfs.get_driver_name name with
+						| None -> ""
+						| Some x -> Filename.basename x
+					in
+					let dev_drv_version = Ethtool.get_driver_version name in
+					let get_all_versions = Hashtbl.find_all black_hash driver in
+					if (List.mem dev_drv_version get_all_versions) || (List.mem "*" get_all_versions) then
+						true
+					else
+						false
+		) ()
+
 	let is_connected _ dbg ~name =
 		Debug.with_thread_associated dbg (fun () ->
 			Sysfs.get_carrier name

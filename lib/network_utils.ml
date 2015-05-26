@@ -940,6 +940,13 @@ module Ethtool = struct
 	let call ?(log=false) args =
 		call_script ~log_successful_output:log !ethtool args
 
+	let get_driver_version dev =
+		let output = call ["-i"; dev] in
+		let output_list = Re_str.split_delim (Re_str.regexp_string "#012") output in
+		let filtered_list = List.filter (fun x -> String.startswith "version" x) output_list in
+		let version = List.hd filtered_list in
+		Scanf.sscanf version "version: %s" (fun a -> a)
+
 	let set_options name options =
 		if options <> [] then
 			ignore (call ~log:true ("-s" :: name :: (List.concat (List.map (fun (k, v) -> [k; v]) options))))
